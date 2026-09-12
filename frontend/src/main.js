@@ -1,11 +1,12 @@
+import brandLogo from './brand-logo.png'
 import './style.css'
 import { mountMapHome } from './map-home.js'
-import { DEMO_MODE, COMMUTE_DAYS, getCommuteData, getPropertiesData, calculateCommute } from './commute-api.js'
+import { COMMUTE_DAYS, getCommuteData, getPropertiesData, calculateCommute } from './commute-api.js'
 
 document.querySelector('#app').innerHTML = `
   <header class="header">
-    <a class="brand" href="#">살만해<span>.</span></a>
-    <span class="header-label">나에게 맞는 주거비 찾기</span>
+    <a class="brand" href="#"><img class="brand-logo" src="${brandLogo}" alt="" width="48" height="48">살만해<span>.</span></a>
+
   </header>
 
   <main>
@@ -20,53 +21,13 @@ document.querySelector('#app').innerHTML = `
 
         <p class="description">
           보증금과 월세에 교통비, 출퇴근 시간까지 더해보세요.<br>
-          내 생활을 기준으로 계산한 ‘진짜 월세’를 알려드려요.
+          내 생활을 기준으로 계산한 ‘진짜 월세’를 확인하세요.
         </p>
 
-        <p class="notice">
-          목업 매물의 주거비와 입력한 목적지까지의 이동 비용을 비교합니다.
-        </p>
+
       </div>
 
-      <aside class="cost-card" aria-label="진짜 월세 계산 예시">
-        <div class="card-heading">
-          <h2>월세만 보면 놓치는 비용</h2>
-          <span class="example-label">계산 예시</span>
-        </div>
-
-        <dl class="cost-list">
-          <div>
-            <dt>월세</dt>
-            <dd>500,000원</dd>
-          </div>
-          <div>
-            <dt>보증금 기회비용</dt>
-            <dd>25,000원</dd>
-          </div>
-          <div>
-            <dt>관리비 <small>추정</small></dt>
-            <dd>50,000원</dd>
-          </div>
-          <div>
-            <dt>월 교통비</dt>
-            <dd>60,000원</dd>
-          </div>
-          <div>
-            <dt>월 통근 시간 비용</dt>
-            <dd>220,000원</dd>
-          </div>
-        </dl>
-
-        <div class="total">
-          <span>진짜 월세</span>
-          <strong>855,000<span>원 / 월</span></strong>
-        </div>
-
-        <p class="card-note">
-          이해를 돕기 위한 가상 예시입니다.<br>
-          시간 비용은 실제 지출이 아닌 시간의 환산 가치입니다.
-        </p>
-      </aside>
+      <aside class="cost-card cost-log" aria-label="실제 한달 거주 비용"><p class="log-heading">MONTHLY COST LOG</p><h2 class="log-title">실제 한달 거주 비용</h2><p class="log-unit">원 / 월</p><dl class="log-rows"><div><dt>월세</dt><dd>450,000</dd></div><div><dt>관리비</dt><dd>+ 50,000</dd></div><div><dt>보증금 비용</dt><dd>+ 25,000</dd></div><div><dt>교통비</dt><dd>+ 64,000</dd></div><div><dt>시간비용</dt><dd>+ 95,000</dd></div></dl><div class="log-total"><span>TOTAL</span><strong>684,000</strong></div></aside>
     </section>
 
     <section class="how-it-works" id="how-it-works">
@@ -77,28 +38,26 @@ document.querySelector('#app').innerHTML = `
         <article class="step">
           <span class="step-number">01</span>
           <h3>내 이동 경로 입력</h3>
-          <p>본가와 학교 또는 직장 주소로 현재 통근 부담을 알아봐요.</p>
+          <p>본가와 학교 또는 직장 주소를 입력하고 더 아낄 수 있는 돈과 시간을 계산해드립니다.</p>
         </article>
 
         <article class="step">
           <span class="step-number">02</span>
           <h3>현재 통근 비용 확인</h3>
-          <p>교통비와 시간 비용을 더해 현재 통근 부담을 알아봐요.</p>
+          <p>교통비와 시간 비용을 더해 현재 통근 부담을 확인해보세요.</p>
         </article>
 
         <article class="step">
           <span class="step-number">03</span>
           <h3>진짜 월세 비교</h3>
-          <p>매물별 주거비와 이동 비용을 합산해서 살펴봐요.</p>
+          <p>매물별 주거비와 이동 비용을 합산해서 비교하세요.</p>
         </article>
       </div>
       <a class="primary-button intro-bottom-button" href="#start">내 통근 비용 확인하러 가기 →</a>
     </section>
   </main>
 
-  <footer class="footer">
-    살만해 · 목업 매물 기반 비용 비교 도구
-  </footer>
+
 `
 const app = document.querySelector('#app')
 const introHTML = app.innerHTML
@@ -133,8 +92,8 @@ function frame(step, title, content, backLabel, back) {
   cancelRequest()
   app.innerHTML = `
     <header class="header">
-      <a href="#" class="brand" id="brand-home">살만해<span>.</span></a>
-      <span class="header-label">나에게 맞는 주거비 찾기</span>
+      <a href="#" class="brand" id="brand-home"><img class="brand-logo" src="${brandLogo}" alt="" width="48" height="48">살만해<span>.</span></a>
+
     </header>
     <main class="address-page">
       <button class="back-button" id="back" type="button">← ${backLabel}</button>
@@ -142,7 +101,7 @@ function frame(step, title, content, backLabel, back) {
         <span class="badge">${step}</span>
         <h1 id="page-title" tabindex="-1">${title}</h1>
         ${content}
-        <p class="notice">입력값은 현재 브라우저 탭에 임시 보관됩니다.</p>
+
       </section>
     </main>`
   document.querySelector('#back').onclick = back
@@ -195,7 +154,7 @@ function showAddress() {
         </div>
       </fieldset>
       <p class="input-help">월 통학·출근일수는 20일로 계산합니다.</p>
-      ${DEMO_MODE ? '<p class="demo-notice">데모 모드: 다음 화면은 입력 주소를 실제 조회하지 않고 예시 경로·요금·유가로 계산합니다.</p>' : ''}
+
       <button class="primary-button form-submit" type="submit">내 통근 비용 확인하기 →</button>
     </form>`, '서비스 소개', showIntro)
   const form = bindForm('address-form')
@@ -221,13 +180,13 @@ async function showCommute() {
     <div id="error" role="alert" hidden><p id="error-text"></p><button class="primary-button" id="retry" type="button">다시 시도</button></div>
     <section id="result" class="commute-result" hidden>
       <p id="data-notice" class="demo-notice" hidden></p>
-      <p>매달 통근에 드는 지출과 시간의 가치</p>
+      <p class="commute-summary-title">매달 통근에 드는 지출과 시간의 가치</p>
       <h2 id="total"></h2>
       <dl class="cost-list">
         <div><dt id="travel-label"></dt><dd id="travel-cost"></dd></div>
         <div><dt>월 시간 기회비용</dt><dd id="time-cost"></dd></div>
       </dl>
-      <div class="calculation-details"><p id="travel-formula"></p><p id="time-formula"></p><p id="basis"></p></div>
+
       <p>이 시간을 나를 위해 쓸 수 있다면?<br>자취할 때의 진짜 월세와 비교해보세요.</p>
       <button class="primary-button form-submit" type="button" id="continue">자취방 찾으러 갑시다 →</button>
       <p class="input-help">합계는 실제 교통 지출과 시간의 환산 가치를 더한 추정치입니다. 전액이 현금 지출이거나 이사 후 절약되는 것은 아닙니다.</p>
@@ -248,14 +207,6 @@ async function showCommute() {
     document.querySelector('#travel-cost').textContent = won(cost.monthlyTravel)
     document.querySelector('#time-cost').textContent = won(cost.monthlyTime)
     document.querySelector('#mode').textContent = `${request.transport === 'public' ? '대중교통' : '자차'} · 월 ${cost.days}일 기준`
-    document.querySelector('#time-formula').textContent = `왕복 약 ${format(cost.minutes)}분 · 월 ${cost.days}일 · 적용 시급 ${won(cost.wage)}. 시간 비용은 서버에서 반올림 전 이동시간으로 계산합니다.`
-    if (request.transport === 'public') {
-      document.querySelector('#travel-formula').textContent = `왕복 교통비를 월 ${cost.days}일 기준으로 합산한 금액입니다.`
-      document.querySelector('#basis').textContent = '가는 길과 오는 길을 각각 조회합니다. 정기권·개인별 할인은 별도로 반영하지 않습니다.'
-    } else {
-      document.querySelector('#travel-formula').textContent = `왕복 약 ${format(cost.km)}km · 연비 ${format(data.assumptions.fuel_efficiency_km_per_liter)}km/L · 고정 유가 ${won(data.assumptions.fuel_price_per_liter)}/L`
-      document.querySelector('#basis').textContent = '유류비는 서버에서 계산한 금액입니다. 주차비·통행료·차량 유지비는 제외합니다.'
-    }
     const routeNames = { public: '대중교통', car: '자가용', walk: '도보' }
     if ([data.outbound_route_type, data.inbound_route_type].includes('walk')) {
       const notice = document.querySelector('#data-notice')
