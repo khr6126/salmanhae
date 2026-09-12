@@ -1,3 +1,4 @@
+import brandLogo from './brand-logo.png'
 import './map-home.css'
 
 const storageKey = 'salmanhae-api-favorites-v1'
@@ -97,12 +98,12 @@ export function mountMapHome(root, { baseline, result, destination, back, intro 
   let map, layer, disposed = false
   let selection = new Set()
   root.innerHTML = `
-    <header class="header"><button class="brand mh-link" id="mh-intro">살만해<span>.</span></button><span>매물 비용 비교</span></header>
+    <header class="header"><button class="brand mh-link" id="mh-intro"><img class="brand-logo" src="${brandLogo}" alt="" width="48" height="48">살만해<span>.</span></button></header>
     <main class="mh-page">
       <button class="back-button" id="mh-back">← 통근 비용 다시 보기</button>
       <h1 tabindex="-1" id="mh-title">매물별 월 전체 비용을 비교하세요.</h1>
       <div class="mh-baseline"><strong id="mh-baseline"></strong><span id="mh-destination"></span></div>
-      <p class="demo-notice" id="mh-source"></p>
+
       <p class="input-help" id="mh-basis"></p>
       <form class="mh-search" id="mh-search"><label for="mh-region">이름·주소 검색</label><input id="mh-region" placeholder="대광, 안암, 도로명" maxlength="100"><button class="primary-button">검색</button></form>
       <p class="input-help">받아온 매물 안에서 검색합니다. 검색어를 지우고 검색하면 전체가 표시됩니다.</p>
@@ -111,7 +112,7 @@ export function mountMapHome(root, { baseline, result, destination, back, intro 
           <button id="mh-view-map" aria-pressed="true" aria-controls="mh-map-panel">지도 보기</button>
           <button id="mh-view-list" aria-pressed="false" aria-controls="mh-list">목록 보기</button>
         </div>
-        <button id="mh-saved" aria-pressed="false">☆ 관심만 보기</button><span id="mh-count"></span>
+        <button id="mh-saved" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3h8l-1 7 3 4v2H6v-2l3-4Z"/><line x1="12" y1="16" x2="12" y2="22"/></svg><span id="mh-saved-label">관심만 보기</span></button><span id="mh-count"></span>
         <button id="mh-compare">관심 항목 비교하기</button>
       </div>
       <p role="status" id="mh-status"></p>
@@ -123,9 +124,6 @@ export function mountMapHome(root, { baseline, result, destination, back, intro 
   const $ = selector => root.querySelector(selector)
   $('#mh-baseline').textContent = `현재 월 통근 부담 ${money(baseline)}`
   $('#mh-destination').textContent = `목적지: ${destination}`
-  $('#mh-source').textContent = result.data_source === 'mock'
-    ? '목업 매물 전체를 비교합니다. 현재 거래 가능한 매물이나 목적지 반경 검색 결과가 아닙니다. 이동 비용은 입력한 목적지와 이동수단을 기준으로 서버에서 계산했습니다.'
-    : '서버에서 받은 매물의 주거비와 이동 비용을 비교합니다.'
   $('#mh-basis').textContent = basis
   $('#mh-back').onclick = back
   $('#mh-intro').onclick = intro
@@ -136,8 +134,10 @@ export function mountMapHome(root, { baseline, result, destination, back, intro 
   function saveButton(home) {
     const button = document.createElement('button')
     const saved = favorites.has(home.id)
-    button.className = 'mh-save'
-    button.textContent = saved ? '★ 저장됨' : '☆ 관심 저장'
+    button.type = 'button'
+    button.className = 'mh-save mh-star'
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3h8l-1 7 3 4v2H6v-2l3-4Z"/><line x1="12" y1="16" x2="12" y2="22" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+    button.title = saved ? '관심 해제' : '관심 저장'
     button.setAttribute('aria-pressed', String(saved))
     button.setAttribute('aria-label', `${home.name} ${saved ? '관심 해제' : '관심 저장'}`)
     button.onclick = () => {
@@ -152,17 +152,37 @@ export function mountMapHome(root, { baseline, result, destination, back, intro 
 
   function detail(home) {
     const body = $('#mh-detail-body')
-    body.innerHTML = '<h2 id="mh-detail-title"></h2><p class="mh-address"></p><strong class="mh-price"></strong><p class="mh-error"></p><dl class="cost-list"></dl><p class="input-help"></p>'
+
+    body.innerHTML = '<p class="log-heading">MONTHLY COST LOG</p><div class="mh-detail-heading"><h2 id="mh-detail-title"></h2></div><p class="mh-address"></p><p class="log-unit">원 / 월</p><p class="mh-error" role="status"></p><dl class="log-rows"></dl><div class="log-total"><span>TOTAL</span><strong class="mh-price"></strong></div><details class="log-extra"><summary>보증금·통근 정보와 계산 기준</summary><dl class="log-meta"></dl><p class="input-help"></p></details>'
     body.querySelector('h2').textContent = home.name
     body.querySelector('.mh-address').textContent = home.address
-    body.querySelector('.mh-price').textContent = validCost(home) ? `월 전체 비용 ${money(home.costs.monthly_total_cost)}` : '전체 비용 계산 불가'
+    const amount = value => typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString('ko-KR') : '계산 불가'
+    body.querySelector('.mh-price').textContent = validCost(home) ? amount(home.costs.monthly_total_cost) : '계산 불가'
     body.querySelector('.mh-error').textContent = home.error || ''
     body.querySelector('.input-help').textContent = basis
-    for (const [label, value] of receiptRows(home, result.transport_mode)) {
+    const c = home.costs || {}
+    const rows = [['월세', c.monthly_rent], ['관리비', c.monthly_maintenance_fee], ['보증금 비용', c.monthly_deposit_opportunity_cost], [result.transport_mode === 'car' ? '유류비' : '교통비', c.monthly_transport_cost], ['시간비용', c.monthly_opportunity_cost]]
+    rows.forEach(([label, value], index) => {
       const row = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd')
-      dt.textContent = label; dd.textContent = value; row.append(dt, dd); body.querySelector('dl').append(row)
+      dt.textContent = label
+      dd.textContent = (index > 0 && typeof value === 'number' && Number.isFinite(value) ? '+ ' : '') + amount(value)
+      row.append(dt, dd); body.querySelector('.log-rows').append(row)
+    })
+    for (const [label, value] of receiptRows(home, result.transport_mode).filter(([label]) => !['월세', '월 관리비', '월 유류비', '월 교통비', '월 보증금 기회비용', '월 시간 기회비용', '월 전체 비용'].includes(label))) {
+      const row = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd')
+      dt.textContent = label; dd.textContent = value; row.append(dt, dd); body.querySelector('.log-meta').append(row)
     }
-    body.append(saveButton(home))
+
+    body.querySelector('.mh-detail-heading').append(saveButton(home))
+    const contact = document.createElement('button')
+    contact.type = 'button'
+    contact.className = 'mh-contact'
+    contact.textContent = '문의하기'
+    contact.onclick = () => alert('아직 미구현됨')
+    const actions = document.createElement('div')
+    actions.className = 'mh-detail-actions'
+    actions.append(contact)
+    body.append(actions)
     if (!detailDialog.open) detailDialog.showModal()
   }
 
@@ -196,14 +216,14 @@ export function mountMapHome(root, { baseline, result, destination, back, intro 
 
   function comparisonTable(left, right) {
     const body = $('#mh-comparison-body')
-    body.innerHTML = '<button class="back-button" id="mh-reselect">← 비교 대상 다시 선택</button><table class="mh-compare-table"><caption>매물별 비용 영수증</caption><thead><tr><th id="mh-left-name" scope="col"></th><th scope="col">항목</th><th id="mh-right-name" scope="col"></th></tr></thead><tbody></tbody></table><p class="mh-compare-difference"></p><p class="input-help"></p>'
+    body.innerHTML = '<button class="back-button" id="mh-reselect">← 비교 대상 다시 선택</button><table class="mh-compare-table"><caption><span class="log-heading">MONTHLY COST LOG</span><span class="comparison-caption">매물별 비용 영수증 · 원 / 월</span></caption><thead><tr><th id="mh-left-name" scope="col"></th><th scope="col">항목</th><th id="mh-right-name" scope="col"></th></tr></thead><tbody></tbody></table><p class="mh-compare-difference"></p><p class="input-help"></p>'
     body.querySelector('#mh-left-name').textContent = `${left.name} · ${left.address}`
     body.querySelector('#mh-right-name').textContent = `${right.name} · ${right.address}`
     const rightRows = receiptRows(right, result.transport_mode)
     receiptRows(left, result.transport_mode).forEach(([label, value], index) => {
       const row = document.createElement('tr'), l = document.createElement('td'), h = document.createElement('th'), r = document.createElement('td')
       l.textContent = value; h.textContent = label; h.scope = 'row'; r.textContent = rightRows[index][1]
-      if (label === '월 전체 비용') row.className = 'mh-total-row'
+      if (label === '월 전체 비용') { row.className = 'mh-total-row'; h.textContent = 'TOTAL' }
       row.append(l, h, r); body.querySelector('tbody').append(row)
     })
     const difference = left.costs.monthly_total_cost - right.costs.monthly_total_cost
@@ -219,7 +239,7 @@ export function mountMapHome(root, { baseline, result, destination, back, intro 
   function render() {
     const visible = visibleHomes()
     $('#mh-count').textContent = `${visible.length}건 · 월 전체 비용순`
-    $('#mh-saved').textContent = `${onlySaved ? '★' : '☆'} 관심만 보기 (${favorites.size})`
+    $('#mh-saved-label').textContent = '관심만 보기 (' + favorites.size + ')'
     $('#mh-saved').setAttribute('aria-pressed', String(onlySaved))
     $('#mh-list').replaceChildren()
     if (!visible.length) {

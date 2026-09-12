@@ -72,3 +72,67 @@
 .mh-contact:hover {
   background: #066447;
 }
+/* 매물 상세 계산기 */
+#mh-detail { width: min(560px, calc(100% - 24px)); padding: 24px; border: 1px solid #c9d9ce; border-bottom: 8px solid #aebfb3; border-radius: 28px; background: linear-gradient(145deg, #eaf2ec, #dbe8df); box-shadow: 0 24px 80px #12281b55; }
+#mh-close { padding: 6px 12px; margin-bottom: 14px; border: 1px solid #c4d2c8; border-bottom: 3px solid #aebfb3; border-radius: 8px; background: #f8faf8; font-size: 13px; }
+#mh-detail-title { font-size: 23px; margin: 0 0 6px; word-break: keep-all; }
+#mh-detail .mh-address { margin: 0 0 18px; color: #59675f; font-size: 13px; overflow-wrap: anywhere; }
+.detail-display { padding: 22px 20px; border: 1px solid #a9bca8; border-radius: 12px; background: #f3f7dc; box-shadow: inset 0 3px 8px #354c2415; text-align: right; }
+.detail-display > span { display: block; font-size: 12px; color: #54664b; }
+.detail-display .mh-price { display: block; margin-top: 6px; font-family: Consolas, monospace; font-variant-numeric: tabular-nums; font-size: clamp(26px, 6vw, 40px); color: #243b29; overflow-wrap: anywhere; }
+#mh-detail .detail-keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+#mh-detail .detail-keys > div { display: flex; flex-direction: column; gap: 6px; padding: 13px; border: 1px solid #d6e0d8; border-bottom: 4px solid #b7c9bd; border-radius: 10px; background: #fff; min-width: 0; }
+#mh-detail .detail-keys dt { font-size: 12px; }
+#mh-detail .detail-keys dd { font-size: 16px; white-space: normal; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+#mh-detail .detail-keys > div:last-child { grid-column: 1 / -1; background: #087f5b; border-color: #056246; }
+#mh-detail .detail-keys > div:last-child dt, #mh-detail .detail-keys > div:last-child dd { color: white; }
+#mh-detail .mh-save { width: 100%; padding: 14px; border: 1px solid #d2b557; border-bottom: 4px solid #b69a3b; background: #ffe293; font-weight: 700; color: #534412; }
+#mh-detail .mh-error:empty { display: none; }
+#mh-detail .mh-error { color: #9b332d; font-size: 13px; }
+@media (max-width: 400px) { #mh-detail { padding: 18px; } #mh-detail .detail-keys { gap: 8px; } #mh-detail .detail-keys > div { padding: 10px; } }
+
+/* 이름 옆 관심 별과 상세 문의 */
+.mh-card { position: relative; }
+.mh-card > .mh-open { padding-right: 50px; }
+.mh-card > .mh-star { position: absolute; top: 12px; right: 12px; }
+.mh-star, #mh-detail .mh-star { display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 0; background: transparent; color: #66766b; font-size: 30px; line-height: 1; flex-shrink: 0; cursor: pointer; }
+.mh-star[aria-pressed=true], #mh-detail .mh-star[aria-pressed=true] { color: #b78000; background: transparent; }
+.mh-star:hover, #mh-detail .mh-star:hover { background: transparent; color: #202b28; }
+.mh-star:focus-visible { outline: 3px solid #087f5b; outline-offset: 2px; }
+.mh-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.mh-detail-heading #mh-detail-title { margin: 6px 0 12px; min-width: 0; overflow-wrap: anywhere; }
+#mh-detail .mh-detail-actions { justify-content: flex-end; }
+#mh-detail .mh-contact { min-height: 44px; padding: 12px 28px; }
+
+/* 작은 별을 원형 버튼 중앙에 정렬 */
+.mh-star, #mh-detail .mh-star { display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
+.mh-star svg { display: block; width: 22px; height: 22px; flex: 0 0 22px; overflow: visible; }
+#mh-detail .mh-star svg { width: 20px; height: 20px; flex-basis: 20px; }
+.mh-star svg path { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.mh-star[aria-pressed=true] svg path { fill: currentColor; }
+/* 비교 영수증 */
+#mh-comparison { background: #fffef9; border: 1px solid #d8ddd2; border-radius: 8px; padding: 30px; box-shadow: 0 20px 60px #20332630; }
+#mh-comparison-title { font-size: 21px; margin: 12px 0 24px; }
+#mh-comparison-close { border: 1px solid #d9ded3; border-radius: 5px; padding: 5px 10px; font-size: 12px; }
+#mh-comparison .mh-compare-table { margin-top: 24px; }
+#mh-comparison .mh-compare-table caption { border-top: 2px dashed #a7b2a1; padding: 20px 0; }
+#mh-comparison .mh-compare-table caption .log-heading { display: block; margin-bottom: 8px; }
+.comparison-caption { display: block; font-size: 12px; color: #758070; }
+#mh-comparison .mh-compare-table thead th { background: transparent; border-top: 1px solid #dce1d5; border-bottom: 1px dashed #a7b2a1; font-size: 13px; color: #344a3a; }
+#mh-comparison .mh-compare-table td { font-family: Consolas, "Malgun Gothic", monospace; font-variant-numeric: tabular-nums; font-size: 15px; text-align: right; }
+#mh-comparison .mh-compare-table td, #mh-comparison .mh-compare-table tbody th { border-bottom: 1px dotted #e2e5dc; padding: 14px 10px; }
+#mh-comparison .mh-compare-table tbody th { font-size: 12px; }
+#mh-comparison .mh-compare-table .mh-total-row { background: transparent; color: #087f5b; }
+#mh-comparison .mh-total-row td, #mh-comparison .mh-total-row th { border-top: 2px dashed #a7b2a1; border-bottom: 3px double #a7b2a1; padding-top: 22px; padding-bottom: 22px; font-weight: 800; color: #087f5b; }
+#mh-comparison .mh-total-row th { font-family: Consolas, monospace; letter-spacing: 1px; }
+#mh-comparison .mh-compare-difference { background: transparent; border-bottom: 1px dashed #a7b2a1; padding: 16px 0 24px; border-radius: 0; text-align: center; }
+#mh-comparison .mh-compare-option { border-radius: 4px; border: 1px dashed #c7d0bf; background: #fffef9; }
+#mh-comparison .mh-compare-option:has(input:checked) { background: #f1f5e9; border-color: #087f5b; }
+@media(max-width: 500px) { #mh-comparison { padding: 18px 12px; } #mh-comparison .mh-compare-table td, #mh-comparison .mh-compare-table tbody th { padding: 12px 5px; font-size: 12px; } }
+
+/* 목록의 매물 설명 */
+.mh-list .mh-open span { color: #000; }
+
+#mh-saved { display: inline-flex; align-items: center; gap: 6px; }
+#mh-saved svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#mh-saved[aria-pressed=true] svg path { fill: currentColor; }
