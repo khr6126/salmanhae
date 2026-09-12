@@ -8,11 +8,29 @@ from typing import Literal
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
 load_dotenv()
 
 app = FastAPI()
+
+# 프론트엔드 주소를 허용합니다. 배포 시 .env의 CORS_ORIGINS에 실제 주소를 넣으세요.
+# 여러 주소는 쉼표로 구분합니다. 주소 끝에 /를 붙이지 않습니다.
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 
 # 초기 계산 가정값
 MINIMUM_WAGE = 10320
@@ -125,16 +143,20 @@ async def get_one_way_route(client, origin, destination, mode):
             key=lambda item: item["properties"]["totalTime"],
         )
         properties = route["properties"]
-        fare = properties.get("fare", {}).get("value")
-
-        fare = properties.get("fare", {}).get("value")
+        # fare 자체가 null인 응답도 처리합니다. 0원은 정상 요금입니다.
+        fare = (properties.get("fare") or {}).get("value")
 
         if fare is None:
-            return await get_walking_route(
-               client,
-               origin,
-                destination
-             )
+            # 기존 정책 유지: 요금이 없으면 별도 도보 경로를 조회합니다.
+            return await get_walking_route(client, origin, destination)
+
+        # 대중교통 결과를 반환하여 자동차 계산으로 넘어가지 않게 합니다.
+        return {
+            "duration_seconds": properties["totalTime"],
+            "distance_meters": properties["totalDistance"],
+            "transport_cost": fare,
+            "route_type": "public",
+        }
 
     data = await kakao_get(
         client,
@@ -165,6 +187,7 @@ async def get_one_way_route(client, origin, destination, mode):
         "duration_seconds": summary["duration"],
         "distance_meters": summary["distance"],
         "transport_cost": fuel_cost,
+        "route_type": "car",
     }
 
 async def get_walking_route(client, origin, destination):
@@ -261,6 +284,9 @@ async def calculate_round_trip_cost(client, origin, destination, mode):
     monthly_transport = won(transport * COMMUTE_DAYS_PER_MONTH)
     monthly_opportunity = won(opportunity * COMMUTE_DAYS_PER_MONTH)
     return {
+        # public 요청이어도 도보로 대체된 구간을 화면에서 구별할 수 있습니다.
+        "outbound_route_type": outbound["route_type"],
+        "inbound_route_type": inbound["route_type"],
         "one_way_time_minutes": round(outbound["duration_seconds"] / 60, 1),
         "return_time_minutes": round(inbound["duration_seconds"] / 60, 1),
         "round_trip_time_minutes": round(seconds / 60, 1),
