@@ -1,5 +1,8 @@
 import asyncio
 import os
+import json
+from pathlib import Path
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Literal
 
 import httpx
@@ -124,14 +127,14 @@ async def get_one_way_route(client, origin, destination, mode):
         properties = route["properties"]
         fare = properties.get("fare", {}).get("value")
 
-        if fare is None:
-            raise HTTPException(422, "선택한 대중교통 경로의 요금을 확인할 수 없습니다.")
+        fare = properties.get("fare", {}).get("value")
 
-        return {
-            "duration_seconds": properties["totalTime"],
-            "distance_meters": properties["totalDistance"],
-            "transport_cost": fare,
-        }
+        if fare is None:
+            return await get_walking_route(
+               client,
+               origin,
+                destination
+             )
 
     data = await kakao_get(
         client,
@@ -164,6 +167,128 @@ async def get_one_way_route(client, origin, destination, mode):
         "transport_cost": fuel_cost,
     }
 
+async def get_walking_route(client, origin, destination):
+    data = await kakao_get(
+        client,
+        "https://dapi.kakao.com/v2/routing/walk",
+        {
+            "start_x": origin["x"],
+            "start_y": origin["y"],
+            "end_x": destination["x"],
+            "end_y": destination["y"],
+            "route_mode": "SHORTEST",
+        },
+    )
+
+    if data.get("status") != "OK" or "route" not in data:
+        raise HTTPException(
+            422,
+            "도보 경로를 찾을 수 없습니다."
+        )
+
+    properties = data["route"]["properties"]
+
+    return {
+        "duration_seconds": properties["totalTime"],
+        "distance_meters": properties["totalDistance"],
+        "transport_cost": 0,
+        "route_type": "walk"
+    }
+
+# 개발용 금리 가정입니다. 현재 실제 기준금리를 의미하지 않습니다.
+ANNUAL_BASE_RATE = 0.025
+BASE_DIR = Path(__file__).resolve().parent
+
+
+class PropertyData(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: int = Field(gt=0)
+    name: str = Field(min_length=1)
+    address: str = Field(min_length=1, max_length=300)
+    deposit: int = Field(ge=0)
+    monthlyRent: int = Field(ge=0)
+    maintenanceFee: int = Field(ge=0)
+
+
+class PropertyEvaluateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    destination_address: str = Field(min_length=1, max_length=300)
+    transport_mode: Literal["public", "car"]
+
+
+with (BASE_DIR / "data" / "mock_properties.json").open(encoding="utf-8") as file:
+    MOCK_PROPERTIES = [PropertyData.model_validate(item) for item in json.load(file)]
+
+if len({item.id for item in MOCK_PROPERTIES}) != len(MOCK_PROPERTIES):
+    raise ValueError("매물 ID는 중복될 수 없습니다.")
+
+
+def won(value):
+    """원 단위 사사오입. 표시 항목을 합산해 영수증 합계를 맞춥니다."""
+    return int(Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def get_api_key():
+    api_key = os.getenv("KAKAO_REST_API_KEY")
+    if not api_key:
+        raise HTTPException(500, "KAKAO_REST_API_KEY가 설정되지 않았습니다.")
+    return api_key
+
+
+def calculation_assumptions(mode):
+    return {
+        "minimum_wage": MINIMUM_WAGE,
+        "commute_days_per_month": COMMUTE_DAYS_PER_MONTH,
+        "fuel_efficiency_km_per_liter": AVERAGE_FUEL_EFFICIENCY if mode == "car" else None,
+        "fuel_price_per_liter": FUEL_PRICE if mode == "car" else None,
+        "fuel_price_source": "fixed_assumption" if mode == "car" else None,
+    }
+
+
+async def calculate_round_trip_cost(client, origin, destination, mode):
+    outbound, inbound = await asyncio.gather(
+        get_one_way_route(client, origin, destination, mode),
+        get_one_way_route(client, destination, origin, mode),
+    )
+    seconds = outbound["duration_seconds"] + inbound["duration_seconds"]
+    transport = outbound["transport_cost"] + inbound["transport_cost"]
+    opportunity = seconds / 3600 * MINIMUM_WAGE
+    daily_transport = won(transport)
+    daily_opportunity = won(opportunity)
+    # 월 비용은 반올림 전의 하루 비용을 기준으로 계산합니다.
+    monthly_transport = won(transport * COMMUTE_DAYS_PER_MONTH)
+    monthly_opportunity = won(opportunity * COMMUTE_DAYS_PER_MONTH)
+    return {
+        "one_way_time_minutes": round(outbound["duration_seconds"] / 60, 1),
+        "return_time_minutes": round(inbound["duration_seconds"] / 60, 1),
+        "round_trip_time_minutes": round(seconds / 60, 1),
+        "round_trip_distance_km": round(
+            (outbound["distance_meters"] + inbound["distance_meters"]) / 1000, 2
+        ),
+        "daily_transport_cost": daily_transport,
+        "daily_opportunity_cost": daily_opportunity,
+        "daily_total_cost": daily_transport + daily_opportunity,
+        "monthly_transport_cost": monthly_transport,
+        "monthly_opportunity_cost": monthly_opportunity,
+        "monthly_total_cost": monthly_transport + monthly_opportunity,
+    }
+
+
+def calculate_housing_cost(property_data):
+    deposit_cost = won(
+        Decimal(property_data.deposit) * Decimal(str(ANNUAL_BASE_RATE)) / 12
+    )
+    return {
+        "monthly_rent": property_data.monthlyRent,
+        "monthly_maintenance_fee": property_data.maintenanceFee,
+        "monthly_deposit_opportunity_cost": deposit_cost,
+        "monthly_housing_cost": (
+            property_data.monthlyRent + property_data.maintenanceFee + deposit_cost
+        ),
+    }
+
 
 @app.get("/health")
 def health():
@@ -172,94 +297,104 @@ def health():
 
 @app.post("/api/commute/calculate")
 async def calculate_commute(request: CommuteRequest):
-    api_key = os.getenv("KAKAO_REST_API_KEY")
-
-    if not api_key:
-        raise HTTPException(500, "KAKAO_REST_API_KEY가 설정되지 않았습니다.")
-
+    api_key = get_api_key()
     async with httpx.AsyncClient(
-        headers={"Authorization": f"KakaoAK {api_key}"},
-        timeout=15.0,
+        headers={"Authorization": f"KakaoAK {api_key}"}, timeout=15.0
     ) as client:
         home, destination = await asyncio.gather(
             address_to_coordinates(client, request.home_address),
             address_to_coordinates(client, request.destination_address),
         )
-
-        outbound, inbound = await asyncio.gather(
-            get_one_way_route(
-                client, home, destination, request.transport_mode
-            ),
-            get_one_way_route(
-                client, destination, home, request.transport_mode
-            ),
+        costs = await calculate_round_trip_cost(
+            client, home, destination, request.transport_mode
         )
-
-    round_trip_seconds = (
-        outbound["duration_seconds"]
-        + inbound["duration_seconds"]
-    )
-
-    daily_transport_cost = (
-        outbound["transport_cost"]
-        + inbound["transport_cost"]
-    )
-    daily_opportunity_cost = (
-        round_trip_seconds / 3600 * MINIMUM_WAGE
-    )
-    daily_total_cost = daily_transport_cost + daily_opportunity_cost
-
     return {
         "home_address": request.home_address,
         "destination_address": request.destination_address,
         "transport_mode": request.transport_mode,
         "home_coordinates": home,
         "destination_coordinates": destination,
+        **costs,
+        "assumptions": calculation_assumptions(request.transport_mode),
+    }
 
-        # 기존 one_way 필드는 가는 길 기준
-        "one_way_time_minutes": round(
-            outbound["duration_seconds"] / 60, 1
-        ),
-        "return_time_minutes": round(
-            inbound["duration_seconds"] / 60, 1
-        ),
-        "round_trip_time_minutes": round(round_trip_seconds / 60, 1),
-        "round_trip_distance_km": round(
-            (
-                outbound["distance_meters"]
-                + inbound["distance_meters"]
-            ) / 1000,
-            2,
-        ),
 
-        "daily_transport_cost": round(daily_transport_cost),
-        "daily_opportunity_cost": round(daily_opportunity_cost),
-        "daily_total_cost": round(daily_total_cost),
+@app.post("/api/properties/evaluate")
+async def evaluate_properties(request: PropertyEvaluateRequest):
+    api_key = get_api_key()
+    results = []
+    # 한 요청 안에서 같은 주소의 좌표와 왕복 경로를 재사용합니다.
+    address_results = {}
+    async with httpx.AsyncClient(
+        headers={"Authorization": f"KakaoAK {api_key}"}, timeout=15.0
+    ) as client:
+        destination = await address_to_coordinates(client, request.destination_address)
+        for address in dict.fromkeys(item.address for item in MOCK_PROPERTIES):
+            coordinates = None
+            try:
+                coordinates = await address_to_coordinates(client, address)
+                commute = await calculate_round_trip_cost(
+                    client, coordinates, destination, request.transport_mode
+                )
+                address_results[address] = {
+                    "coordinates": coordinates, "commute": commute, "error": None
+                }
+            except HTTPException as exc:
+                # 서버/API 인증·한도 장애는 전체 요청의 오류로 전달합니다.
+                if exc.status_code != 422:
+                    raise
+                address_results[address] = {
+                    "coordinates": coordinates, "commute": None, "error": exc.detail
+                }
 
-        "monthly_transport_cost": round(
-            daily_transport_cost * COMMUTE_DAYS_PER_MONTH
-        ),
-        "monthly_opportunity_cost": round(
-            daily_opportunity_cost * COMMUTE_DAYS_PER_MONTH
-        ),
-        "monthly_total_cost": round(
-            daily_total_cost * COMMUTE_DAYS_PER_MONTH
-        ),
+    for property_data in MOCK_PROPERTIES:
+        route_result = address_results[property_data.address]
+        housing = calculate_housing_cost(property_data)
+        commute = route_result["commute"]
+        costs = {
+            **housing,
+            "monthly_transport_cost": None,
+            "monthly_opportunity_cost": None,
+            "monthly_cash_expense": None,
+            "monthly_total_cost": None,
+        }
+        if commute is not None:
+            costs.update({
+                "monthly_transport_cost": commute["monthly_transport_cost"],
+                "monthly_opportunity_cost": commute["monthly_opportunity_cost"],
+                "monthly_cash_expense": (
+                    property_data.monthlyRent + property_data.maintenanceFee
+                    + commute["monthly_transport_cost"]
+                ),
+                "monthly_total_cost": (
+                    housing["monthly_housing_cost"] + commute["monthly_total_cost"]
+                ),
+            })
+        results.append({
+            **property_data.model_dump(),
+            "coordinates": route_result["coordinates"],
+            "calculation_status": "ok" if commute is not None else "unavailable",
+            "error": route_result["error"],
+            "commute": commute,
+            "costs": costs,
+        })
 
+    # 계산 가능한 매물부터 비용순 정렬. 실패 매물은 금액 없이 마지막에 표시합니다.
+    results.sort(key=lambda item: (
+        item["costs"]["monthly_total_cost"] is None,
+        item["costs"]["monthly_total_cost"] if item["costs"]["monthly_total_cost"] is not None else 0,
+        item["id"],
+    ))
+    return {
+        "destination_address": request.destination_address,
+        "destination_coordinates": destination,
+        "transport_mode": request.transport_mode,
+        "data_source": "mock",
+        "search_scope": "all_mock_properties",
         "assumptions": {
-            "minimum_wage": MINIMUM_WAGE,
-            "commute_days_per_month": COMMUTE_DAYS_PER_MONTH,
-            "fuel_efficiency_km_per_liter": (
-                AVERAGE_FUEL_EFFICIENCY
-                if request.transport_mode == "car" else None
-            ),
-            "fuel_price_per_liter": (
-                FUEL_PRICE
-                if request.transport_mode == "car" else None
-            ),
-            "fuel_price_source": (
-                "fixed_assumption"
-                if request.transport_mode == "car" else None
-            ),
+            **calculation_assumptions(request.transport_mode),
+            "annual_base_rate": ANNUAL_BASE_RATE,
+            "base_rate_source": "development_assumption",
         },
+        "properties": results,
     }
