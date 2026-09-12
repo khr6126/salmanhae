@@ -196,9 +196,25 @@ export function mountMapHome(root, { baseline, wage, demo, destination, back, in
       const row = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd')
       dt.textContent = label; dd.textContent = value; row.append(dt, dd); body.querySelector('dl').append(row)
     }
-    const button = saveButton(home)
-    button.onclick = () => { toggle(home.id); detail(home) }
-    body.append(button)
+    const actions = document.createElement('div')
+    actions.className = 'mh-detail-actions'
+
+const save = saveButton(home)
+save.onclick = () => {
+  toggle(home.id)
+  detail(home)
+}
+
+const contact = document.createElement('button')
+contact.type = 'button'
+contact.className = 'mh-contact'
+contact.textContent = '문의하기'
+contact.onclick = () => {
+  alert('아직 미구현됨')
+}
+
+actions.append(save, contact)
+body.append(actions)
     if (!dialog.open) dialog.showModal()
   }
   function visibleHomes() {
