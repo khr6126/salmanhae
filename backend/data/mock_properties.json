@@ -1,0 +1,162 @@
+[
+  {
+    "id": 1,
+    "name": "대광 A",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 10000000,
+    "monthlyRent": 550000,
+    "maintenanceFee": 70000
+  },
+  {
+    "id": 2,
+    "name": "대광 B",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 40000000,
+    "monthlyRent": 300000,
+    "maintenanceFee": 60000
+  },
+  {
+    "id": 3,
+    "name": "대광 C",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 50000000,
+    "monthlyRent": 400000,
+    "maintenanceFee": 110000
+  },
+  {
+    "id": 4,
+    "name": "대광 D",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 20000000,
+    "monthlyRent": 500000,
+    "maintenanceFee": 20000
+  },
+  {
+    "id": 5,
+    "name": "대광 E",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 10000000,
+    "monthlyRent": 400000,
+    "maintenanceFee": 70000
+  },
+  {
+    "id": 6,
+    "name": "대광 F",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 10000000,
+    "monthlyRent": 400000,
+    "maintenanceFee": 40000
+  },
+  {
+    "id": 7,
+    "name": "대광 G",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 10000000,
+    "monthlyRent": 500000,
+    "maintenanceFee": 40000
+  },
+  {
+    "id": 8,
+    "name": "대광 H",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 10000000,
+    "monthlyRent": 400000,
+    "maintenanceFee": 20000
+  },
+  {
+    "id": 9,
+    "name": "대광 I",
+    "address": "서울특별시 성북구 안암로9나길 14",
+    "deposit": 10000000,
+    "monthlyRent": 500000,
+    "maintenanceFee": 120000
+  },
+  {
+    "id": 10,
+    "name": "안암 A",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 125000000,
+    "monthlyRent": 50000,
+    "maintenanceFee": 100000
+  },
+  {
+    "id": 11,
+    "name": "안암 B",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 110000000,
+    "monthlyRent": 500000,
+    "maintenanceFee": 120000
+  },
+  {
+    "id": 12,
+    "name": "안암 C",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 20000000,
+    "monthlyRent": 550000,
+    "maintenanceFee": 50000
+  },
+  {
+    "id": 13,
+    "name": "안암 D",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 20000000,
+    "monthlyRent": 600000,
+    "maintenanceFee": 20000
+  },
+  {
+    "id": 14,
+    "name": "안암 E",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 10000000,
+    "monthlyRent": 600000,
+    "maintenanceFee": 20000
+  },
+  {
+    "id": 15,
+    "name": "안암 F",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 140000000,
+    "monthlyRent": 300000,
+    "maintenanceFee": 90000
+  },
+  {
+    "id": 16,
+    "name": "안암 G",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 140000000,
+    "monthlyRent": 300000,
+    "maintenanceFee": 20000
+  },
+  {
+    "id": 17,
+    "name": "안암 H",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 10000000,
+    "monthlyRent": 600000,
+    "maintenanceFee": 130000
+  },
+  {
+    "id": 18,
+    "name": "안암 I",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 10000000,
+    "monthlyRent": 600000,
+    "maintenanceFee": 60000
+  },
+  {
+    "id": 19,
+    "name": "안암 J",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 120000000,
+    "monthlyRent": 100000,
+    "maintenanceFee": 120000
+  },
+  {
+    "id": 20,
+    "name": "안암 K",
+    "address": "서울특별시 성북구 안암로9가길 9-16",
+    "deposit": 20000000,
+    "monthlyRent": 550000,
+    "maintenanceFee": 130000
+  }
+]
