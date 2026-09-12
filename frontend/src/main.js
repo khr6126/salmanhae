@@ -1,6 +1,6 @@
 import './style.css'
 import { mountMapHome } from './map-home.js'
-import { DEMO_MODE, COMMUTE_DAYS, getCommuteData, calculateCommute } from './commute-api.js'
+import { DEMO_MODE, COMMUTE_DAYS, getCommuteData, getPropertiesData, calculateCommute } from './commute-api.js'
 
 document.querySelector('#app').innerHTML = `
   <header class="header">
@@ -24,7 +24,7 @@ document.querySelector('#app').innerHTML = `
         </p>
 
         <p class="notice">
-          과거 실거래가를 바탕으로 동네 시세를 비교하는 서비스입니다.
+          목업 매물의 주거비와 입력한 목적지까지의 이동 비용을 비교합니다.
         </p>
       </div>
 
@@ -89,7 +89,7 @@ document.querySelector('#app').innerHTML = `
         <article class="step">
           <span class="step-number">03</span>
           <h3>진짜 월세 비교</h3>
-          <p>동네별 거래 이력을 총비용 기준으로 살펴봐요.</p>
+          <p>매물별 주거비와 이동 비용을 합산해서 살펴봐요.</p>
         </article>
       </div>
       <a class="primary-button intro-bottom-button" href="#start">내 통근 비용 확인하러 가기 →</a>
@@ -97,7 +97,7 @@ document.querySelector('#app').innerHTML = `
   </main>
 
   <footer class="footer">
-    살만해 · 현재 계약 가능한 매물 정보가 아닌 실거래가 기반 비교 도구
+    살만해 · 목업 매물 기반 비용 비교 도구
   </footer>
 `
 const app = document.querySelector('#app')
@@ -238,7 +238,7 @@ async function showCommute() {
   const token = generation
   currentRequest = new AbortController()
   const controller = currentRequest
-  const timeout = setTimeout(() => controller.abort(), 15000)
+  const timeout = setTimeout(() => controller.abort(), 60000)
   try {
     const data = await getCommuteData(request, controller.signal)
     if (generation !== token) return
@@ -247,20 +247,22 @@ async function showCommute() {
     document.querySelector('#travel-label').textContent = request.transport === 'public' ? '월 대중교통비' : '월 기름값'
     document.querySelector('#travel-cost').textContent = won(cost.monthlyTravel)
     document.querySelector('#time-cost').textContent = won(cost.monthlyTime)
-    document.querySelector('#time-formula').textContent = `시간 비용: 왕복 ${format(cost.minutes)}분 ÷ 60 × 20일 × 시급 ${won(cost.wage)} = ${won(cost.monthlyTime)}`
+    document.querySelector('#mode').textContent = `${request.transport === 'public' ? '대중교통' : '자차'} · 월 ${cost.days}일 기준`
+    document.querySelector('#time-formula').textContent = `왕복 약 ${format(cost.minutes)}분 · 월 ${cost.days}일 · 적용 시급 ${won(cost.wage)}. 시간 비용은 서버에서 반올림 전 이동시간으로 계산합니다.`
     if (request.transport === 'public') {
-      document.querySelector('#travel-formula').textContent = `교통비: (가는 요금 ${won(data.route.outboundFareWon)} + 오는 요금 ${won(data.route.returnFareWon)}) × 20일 = ${won(cost.monthlyTravel)}`
-      document.querySelector('#basis').textContent = `${data.minimumWage.year}년 최저시급 기준 · 왕복 시간을 합산합니다. 정기권·개인별 할인은 반영하지 않은 기준 요금입니다.`
+      document.querySelector('#travel-formula').textContent = `왕복 교통비를 월 ${cost.days}일 기준으로 합산한 금액입니다.`
+      document.querySelector('#basis').textContent = '가는 길과 오는 길을 각각 조회합니다. 정기권·개인별 할인은 별도로 반영하지 않습니다.'
     } else {
-      document.querySelector('#travel-formula').textContent = `기름값: 왕복 ${format(cost.km)}km ÷ 평균 연비 ${format(data.car.averageKmPerLiter)}km/L × 유가 ${won(data.car.fuelWonPerLiter)}/L × 20일 = ${won(cost.monthlyTravel)}`
-      document.querySelector('#basis').textContent = `${data.minimumWage.year}년 최저시급 기준 · ${data.car.fuelType || '연료 종류 미제공'} · 유가 기준일: ${data.car.priceDate || '미제공'}. 기름값 외 주차비·통행료·차량 유지비는 제외합니다.`
+      document.querySelector('#travel-formula').textContent = `왕복 약 ${format(cost.km)}km · 연비 ${format(data.assumptions.fuel_efficiency_km_per_liter)}km/L · 고정 유가 ${won(data.assumptions.fuel_price_per_liter)}/L`
+      document.querySelector('#basis').textContent = '유류비는 서버에서 계산한 금액입니다. 주차비·통행료·차량 유지비는 제외합니다.'
     }
-    if (data.demo) {
+    const routeNames = { public: '대중교통', car: '자가용', walk: '도보' }
+    if ([data.outbound_route_type, data.inbound_route_type].includes('walk')) {
       const notice = document.querySelector('#data-notice')
       notice.hidden = false
-      notice.textContent = '데모 계산 예시 — 입력 주소에 대한 실제 조회 결과가 아닙니다. 경로·요금·연비·유가는 임시 응답입니다.'
+      notice.textContent = `대중교통 요금이 없는 구간은 도보 경로로 대체했습니다. 가는 길: ${routeNames[data.outbound_route_type] || '확인 불가'}, 오는 길: ${routeNames[data.inbound_route_type] || '확인 불가'}. 도보도 시간 비용에 포함됩니다.`
     }
-    document.querySelector('#continue').onclick = () => showMapHome(cost, data.demo)
+    document.querySelector('#continue').onclick = () => showMapHome(cost)
     document.querySelector('#result').hidden = false
   } catch (error) {
     if (generation !== token) return
@@ -272,12 +274,38 @@ async function showCommute() {
   }
 }
 
-function showMapHome(cost, demo) {
-  cancelRequest()
-  mapCleanup = mountMapHome(app, {
-    baseline: cost.total, wage: cost.wage, demo,
-    destination: state.destination, back: showCommute, intro: showIntro,
-  })
+async function showMapHome(cost) {
+  frame('STEP 03 · 매물 비용 비교', '매물별 월 비용을 계산하고 있어요.', `
+    <p id="property-loading" role="status">목적지까지의 왕복 경로를 조회하고 있습니다. 잠시 기다려주세요.</p>
+    <div id="property-error" role="alert" hidden><p id="property-error-text"></p><button id="property-retry" class="primary-button">다시 시도</button></div>
+  `, '통근 비용 다시 보기', showCommute)
+  const token = generation
+  currentRequest = new AbortController()
+  const controller = currentRequest
+  // 매물 주소별 조회가 순서대로 진행되므로 통근 조회보다 길게 기다립니다.
+  const timeout = setTimeout(() => controller.abort(), 180000)
+  document.querySelector('#property-retry').onclick = () => showMapHome(cost)
+  try {
+    const result = await getPropertiesData({
+      destinationAddress: state.destination, transport: state.transport,
+    }, controller.signal)
+    if (generation !== token) return
+    mapCleanup = mountMapHome(app, {
+      baseline: cost.total,
+      result,
+      destination: state.destination,
+      back: showCommute,
+      intro: showIntro,
+    })
+  } catch (error) {
+    if (generation !== token) return
+    document.querySelector('#property-loading').hidden = true
+    document.querySelector('#property-error-text').textContent = error.name === 'AbortError'
+      ? '매물 조회 시간이 초과됐어요. 다시 시도해주세요.' : error.message
+    document.querySelector('#property-error').hidden = false
+  } finally {
+    clearTimeout(timeout)
+    if (generation === token) currentRequest = null
+  }
 }
 connectIntro()
-
