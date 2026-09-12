@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Added by ChatGPT(오류 발생하면 지워도 됨)
+node_modules/
+.env.*
+!.env.example
