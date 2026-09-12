@@ -52,3 +52,23 @@
 #mh-close { display:block; margin-left:auto; }
 #mh-detail .cost-list > div { gap:20px; }
 @media(max-width:800px) { .mh-layout { grid-template-columns:1fr; } #mh-map { height:360px; } .mh-list { max-height:none; } }
+.mh-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.mh-contact {
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #087f5b;
+  color: white;
+  font-weight: 700;
+}
+
+.mh-contact:hover {
+  background: #066447;
+}
